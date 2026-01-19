@@ -21,7 +21,8 @@ CTM_ROOT = os.path.join(BASE_DIR, "continuous_thought_machines")
 if CTM_ROOT not in sys.path:
     sys.path.insert(0, CTM_ROOT)
 
-from continuous_thought_machines.models.ctm import ContinuousThoughtMachine as CTM
+#from continuous_thought_machines.models.ctm import ContinuousThoughtMachine as CTM
+from continuous_thought_machines.models.ctm_relu import ContinuousThoughtMachineReLU as CTM
 from continuous_thought_machines.data.custom_datasets import MazeImageFolder
 from continuous_thought_machines.tasks.mazes.plotting import make_maze_gif
 from continuous_thought_machines.tasks.image_classification.plotting import plot_neural_dynamics
@@ -424,6 +425,19 @@ def main():
     # Set device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+    print("=" * 60)
+    print("Training setup")
+    print(f"Device           : {device}")
+    print(f"PyTorch version  : {torch.__version__}")
+
+    if device == "cuda":
+        print(f"CUDA available   : {torch.cuda.is_available()}")
+        print(f"CUDA version     : {torch.version.cuda}")
+        print(f"GPU              : {torch.cuda.get_device_name(0)}")
+    else:
+        print("CUDA             : not available (CPU)")
+    print("=" * 60)
+
     # Define the model
     model = CTM(
         iterations=50,
@@ -446,6 +460,7 @@ def main():
     ).to(device)
 
     # Initialize model parameters with dummy forward pass
+    print("About to run dummy forward...")
     sample_batch = next(iter(trainloader))
     dummy_input = sample_batch[0][:1].to(device)
     with torch.no_grad():
