@@ -166,14 +166,8 @@ maze_logs/
 # External / vendor code
 # -----------------------
 
-# Ignore everything in CTM
-continuous_thought_machines/*
-
-# But allow directories so Git can descend
-!continuous_thought_machines/**/
-
-# Track this specific file
-!continuous_thought_machines/models/ctm_relu.py
+# Ignore everything inside CTM
+continuous_thought_machines/
 
 # mypy
 .mypy_cache/

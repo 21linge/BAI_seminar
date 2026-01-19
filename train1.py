@@ -22,7 +22,7 @@ if CTM_ROOT not in sys.path:
     sys.path.insert(0, CTM_ROOT)
 
 #from continuous_thought_machines.models.ctm import ContinuousThoughtMachine as CTM
-from continuous_thought_machines.models.ctm_relu import ContinuousThoughtMachineReLU as CTM
+from ctm_variants.ctm_relu import ContinuousThoughtMachineReLU as CTM
 from continuous_thought_machines.data.custom_datasets import MazeImageFolder
 from continuous_thought_machines.tasks.mazes.plotting import make_maze_gif
 from continuous_thought_machines.tasks.image_classification.plotting import plot_neural_dynamics
