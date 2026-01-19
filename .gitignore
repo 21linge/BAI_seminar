@@ -154,6 +154,20 @@ venv.bak/
 # mkdocs documentation
 /site
 
+# -----------------------
+# Large datasets / logs
+# -----------------------
+
+small-mazes/
+runs/
+maze_logs/
+
+# -----------------------
+# External / vendor code
+# -----------------------
+
+continuous_thought_machines/
+
 # mypy
 .mypy_cache/
 .dmypy.json
