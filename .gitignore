@@ -169,6 +169,11 @@ maze_logs/
 # Ignore everything inside CTM
 continuous_thought_machines/
 
+#ignore venv
+venv/
+
+ctm_variants/__pycache__
+
 # mypy
 .mypy_cache/
 .dmypy.json
