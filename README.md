@@ -10,8 +10,13 @@ gdown "https://drive.google.com/uc?id=1Z8FFnZ7pZcu7DfoSyfy-ghWa08lgYl1V"
 
 # Win:
 Expand-Archive -Path small-mazes.zip -DestinationPath small-mazes
+# (get the small mazes folder out of the small mazes folder)
+
 
 # Linux:
 unzip "small-mazes.zip"
 
 # Rename "continuous-though-machines" to "continuous_though_machines"
+
+### tensorboard:
+tensorboard --logdir ./maze_logs

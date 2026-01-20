@@ -10,7 +10,9 @@ from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 import imageio
 import mediapy
+import time
 import re
+from datetime import datetime
 
 import sys
 import os
@@ -21,8 +23,7 @@ CTM_ROOT = os.path.join(BASE_DIR, "continuous_thought_machines")
 if CTM_ROOT not in sys.path:
     sys.path.insert(0, CTM_ROOT)
 
-#from continuous_thought_machines.models.ctm import ContinuousThoughtMachine as CTM
-from ctm_variants.ctm_relu import ContinuousThoughtMachineReLU as CTM
+from ctm_variants.ctm_relu import ContinuousThoughtMachine as CTM
 from continuous_thought_machines.data.custom_datasets import MazeImageFolder
 from continuous_thought_machines.tasks.mazes.plotting import make_maze_gif
 from continuous_thought_machines.tasks.image_classification.plotting import plot_neural_dynamics
@@ -146,7 +147,8 @@ def train(
     test_every=1000,            # kept but no longer used (epoch-based validation)
     checkpoint_every=10000,
     lr=1e-4,
-    log_dir='./logs'
+    log_dir='./logs',
+    resume = False
 ):
 
     def get_latest_checkpoint(log_dir):
@@ -160,14 +162,16 @@ def train(
         )
 
     os.makedirs(log_dir, exist_ok=True)
+    run_name = f"CTM_ReLU_layers2_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}"
+    log_dir = os.path.join(log_dir, run_name)
     writer = SummaryWriter(log_dir=log_dir)
 
     model.train()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
-    if latest_checkpoint_path := get_latest_checkpoint(log_dir):
+    if resume and (latest_checkpoint_path := get_latest_checkpoint(log_dir)):
         checkpoint = torch.load(latest_checkpoint_path, weights_only=False)
-        model.load_state_dict(checkpoint['model_state_dict'], strict=True)
+        model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         train_losses = checkpoint['train_losses']
         test_losses = checkpoint['test_losses']
@@ -202,7 +206,12 @@ def train(
 
             if is_new_epoch:
                 print(f"\n===== Epoch {epoch} =====")
+                if stepi > 0:
+                    epoch_time = time.time() - epoch_start_time
+                    print(f"Epoch {epoch-1} finished in {epoch_time:.2f} seconds")
+                    writer.add_scalar("time/epoch_seconds", epoch_time, epoch-1)
 
+                epoch_start_time = time.time()
             # --------------------------------------------------
             # Get batch
             # --------------------------------------------------
@@ -419,8 +428,8 @@ def main():
     train_data = MazeImageFolder(root=f'{data_root}/train/', which_set='train', maze_route_length=50)
     test_data = MazeImageFolder(root=f'{data_root}/test/', which_set='test', maze_route_length=50)
 
-    trainloader = torch.utils.data.DataLoader(train_data, batch_size=64, shuffle=True, num_workers=0, drop_last=True)
-    testloader = torch.utils.data.DataLoader(test_data, batch_size=64, shuffle=True, num_workers=1, drop_last=True)
+    trainloader = torch.utils.data.DataLoader(train_data, batch_size=256, shuffle=True, num_workers=0, drop_last=True)
+    testloader = torch.utils.data.DataLoader(test_data, batch_size=256, shuffle=True, num_workers=1, drop_last=True)
 
     # Set device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -438,7 +447,6 @@ def main():
         print("CUDA             : not available (CPU)")
     print("=" * 60)
 
-    # Define the model
     model = CTM(
         iterations=50,
         d_model=1024,
@@ -456,8 +464,11 @@ def main():
         dropout=0.1,
         do_layernorm_nlm=False,
         positional_embedding_type='none',
-        neuron_select_type='random-pairing',  
+        neuron_select_type='random-pairing',
+        ablate_nlms = False,  
     ).to(device)
+
+
 
     # Initialize model parameters with dummy forward pass
     print("About to run dummy forward...")
