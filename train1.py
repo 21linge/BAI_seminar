@@ -24,6 +24,7 @@ if CTM_ROOT not in sys.path:
     sys.path.insert(0, CTM_ROOT)
 
 from ctm_variants.ctm_relu import ContinuousThoughtMachine as CTM
+from continuous_thought_machines.models.lstm import LSTMBaseline
 from continuous_thought_machines.data.custom_datasets import MazeImageFolder
 from continuous_thought_machines.tasks.mazes.plotting import make_maze_gif
 from continuous_thought_machines.tasks.image_classification.plotting import plot_neural_dynamics
@@ -113,7 +114,7 @@ def make_pbar_desc(train_loss, train_accuracy_step, train_accuracy_maze, test_lo
 def update_training_curve_plot(fig, ax1, ax2, train_losses, test_losses, train_accuracies_step, train_accuracies_maze, test_accuracies_step, test_accuracies_maze, steps):
     clear_output(wait=True)
     
-    # Plot loss
+
     ax1.clear()
     ax1.plot(range(len(train_losses)), train_losses, 'b-', alpha=0.7, label=f'Train Loss: {train_losses[-1]:.3f}')
     ax1.plot(steps, test_losses, 'r-', marker='o', label=f'Test Loss: {test_losses[-1]:.3f}')
@@ -123,7 +124,7 @@ def update_training_curve_plot(fig, ax1, ax2, train_losses, test_losses, train_a
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
-    # Plot accuracy (step and maze)
+
     ax2.clear()
     ax2.plot(range(len(train_accuracies_step)), train_accuracies_step, 'b-', alpha=0.7, label=f'Train Step Acc: {train_accuracies_step[-1]:.3f}')
     ax2.plot(range(len(train_accuracies_maze)), train_accuracies_maze, 'g--', alpha=0.7, label=f'Train Maze Acc: {train_accuracies_maze[-1]:.3f}')
@@ -144,7 +145,7 @@ def train(
     testloader,
     device='cpu',
     training_iterations=10000,
-    test_every=1000,            # kept but no longer used (epoch-based validation)
+    test_every=1000,           
     checkpoint_every=10000,
     lr=1e-4,
     log_dir='./logs',
@@ -198,9 +199,6 @@ def train(
     with tqdm(total=training_iterations, initial=start_iter) as pbar:
         for stepi in range(start_iter, training_iterations):
 
-            # --------------------------------------------------
-            # Epoch bookkeeping
-            # --------------------------------------------------
             epoch = stepi // steps_per_epoch
             is_new_epoch = (stepi % steps_per_epoch == 0)
 
@@ -212,9 +210,7 @@ def train(
                     writer.add_scalar("time/epoch_seconds", epoch_time, epoch-1)
 
                 epoch_start_time = time.time()
-            # --------------------------------------------------
-            # Get batch
-            # --------------------------------------------------
+
             try:
                 inputs, targets = next(iterator)
             except StopIteration:
@@ -256,16 +252,11 @@ def train(
             train_accuracies_step.append(train_accuracy_step)
             train_accuracies_maze.append(train_accuracy_maze)
 
-            # --------------------------------------------------
-            # Step-level TensorBoard logging
-            # --------------------------------------------------
+
             writer.add_scalar("loss/train", train_losses[-1], stepi)
             writer.add_scalar("acc/train_step", train_accuracy_step, stepi)
             writer.add_scalar("acc/train_maze", train_accuracy_maze, stepi)
 
-            # --------------------------------------------------
-            # Validation (epoch-based)
-            # --------------------------------------------------
             if is_new_epoch:
                 model.eval()
                 with torch.no_grad():
@@ -324,9 +315,6 @@ def train(
 
                 model.train()
 
-            # --------------------------------------------------
-            # Epoch-level TensorBoard logging
-            # --------------------------------------------------
             if is_new_epoch and stepi > 0:
                 writer.add_scalar(
                     "epoch/train_loss",
@@ -344,9 +332,7 @@ def train(
                     epoch
                 )
 
-            # --------------------------------------------------
-            # Checkpointing
-            # --------------------------------------------------
+
             if stepi % checkpoint_every == 0 or stepi == training_iterations - 1:
                 checkpoint_path = os.path.join(log_dir, f'checkpoint_{stepi}.pt')
                 torch.save({
@@ -428,8 +414,8 @@ def main():
     train_data = MazeImageFolder(root=f'{data_root}/train/', which_set='train', maze_route_length=50)
     test_data = MazeImageFolder(root=f'{data_root}/test/', which_set='test', maze_route_length=50)
 
-    trainloader = torch.utils.data.DataLoader(train_data, batch_size=256, shuffle=True, num_workers=0, drop_last=True)
-    testloader = torch.utils.data.DataLoader(test_data, batch_size=256, shuffle=True, num_workers=1, drop_last=True)
+    trainloader = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True, num_workers=0, drop_last=True)
+    testloader = torch.utils.data.DataLoader(test_data, batch_size=128, shuffle=True, num_workers=1, drop_last=True)
 
     # Set device
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -447,28 +433,42 @@ def main():
         print("CUDA             : not available (CPU)")
     print("=" * 60)
 
-    model = CTM(
-        iterations=50,
-        d_model=1024,
-        d_input=256,
-        heads=8,
-        n_synch_out=256,
-        n_synch_action=256,
-        synapse_depth=8,
-        memory_length=15,
-        deep_nlms=True,
-        memory_hidden_dims=16,
-        backbone_type='resnet34-2',
-        out_dims=50 * 5,
-        prediction_reshaper=[50, 5],
-        dropout=0.1,
-        do_layernorm_nlm=False,
-        positional_embedding_type='none',
-        neuron_select_type='random-pairing',
-        ablate_nlms = False,  
-    ).to(device)
+    if True:
+        model = LSTMBaseline(
+            iterations=50,
+            d_model=2048,
+            d_input=512,
+            heads=16,
+            backbone_type="resnet34-2",
+            num_layers=1,
+            positional_embedding_type="none",
+            out_dims=50 * 5,               
+            prediction_reshaper=[50, 5],
+            dropout=0.1
+        )
+    else:
+        model = CTM(
+            iterations=50,
+            d_model=1024,
+            d_input=256,
+            heads=8,
+            n_synch_out=256,
+            n_synch_action=256,
+            synapse_depth=8,
+            memory_length=15,
+            deep_nlms=True,
+            memory_hidden_dims=16,
+            backbone_type='resnet34-2',
+            out_dims=50 * 5,
+            prediction_reshaper=[50, 5],
+            dropout=0.1,
+            do_layernorm_nlm=False,
+            positional_embedding_type='none',
+            neuron_select_type='random-pairing',
+            ablate_nlms = False,  
+        ).to(device)
 
-
+    model = model.to(device)
 
     # Initialize model parameters with dummy forward pass
     print("About to run dummy forward...")
